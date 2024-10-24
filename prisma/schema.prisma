@@ -1,0 +1,194 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id               String           @id @default(uuid())
+  username         String           @unique
+  email            String           @unique
+  passwordHash     String
+  currentLevel     Int              @default(1)
+  learningStyle    String
+  profileCompleted Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  progress         UserProgress[]
+  testResults      TestResult[]
+  badgesEarned     UserBadge[]
+  codeSubmissions  CodeSubmission[]
+  notifications    Notification[]
+  learningPath     LearningPath?
+  ForumPost        ForumPost[]
+  ForumReply       ForumReply[]
+}
+
+// 'Visual', 'Auditory', 'Read', 'Kinaesthetic'
+enum learningStyle {
+  V
+  A
+  R
+  K
+}
+
+model Lesson {
+  id             String           @id @default(uuid())
+  title          String
+  description    String?
+  content        String //Markdown / HTML
+  level          Int // Difficulty level
+  subject        String // Topic
+  aiGenerated    Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  tests          Test[]
+  progress       UserProgress[]
+  CodeSubmission CodeSubmission[]
+}
+
+model UserProgress {
+  id                 String    @id @default(uuid())
+  userId             String
+  lessonId           String
+  status             Status
+  progressPercentage Int       @default(0)
+  completionDate     DateTime?
+  user               User      @relation(fields: [userId], references: [id])
+  lesson             Lesson    @relation(fields: [lessonId], references: [id])
+}
+
+enum Status {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Test {
+  id          String       @id @default(uuid())
+  title       String
+  lessonId    String
+  description String?
+  totalMarks  Int
+  passMarks   Int
+  createdAt   DateTime     @default(now())
+  lesson      Lesson       @relation(fields: [lessonId], references: [id])
+  questions   Question[]
+  TestResult  TestResult[]
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  testId        String
+  questionText  String
+  questionType  QuestionType
+  correctAnswer String?
+  points        Int
+  test          Test         @relation(fields: [testId], references: [id])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  FILL_IN_THE_BLANK
+  SHORT_ANSWER
+  CODE_COMPLETION
+  CODE_DEBUGGING
+  MATCH_THE_FOLLOWING
+  DRAG_AND_DROP
+  ESSAY_LONG_ANSWER
+  CODE_OUTPUT_PREDICTION
+  CODE_SNIPPET_WRITING
+  REORDER_STEPS
+  DIAGRAM_LABELING
+  CASE_STUDY
+  SELECT_ALL_THAT_APPLY
+}
+
+model TestResult {
+  id        String           @id @default(uuid())
+  userId    String
+  testId    String
+  score     Int
+  status    TestResultStatus
+  dateTaken DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id])
+  test      Test             @relation(fields: [testId], references: [id])
+}
+
+enum TestResultStatus {
+  PASSED
+  FAILED
+}
+
+model UserBadge {
+  id         String   @id @default(uuid())
+  userId     String
+  badgeName  String
+  dateEarned DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+model LearningPath {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  currentStage Int      @default(1) // Progress in the Path
+  pathDetails  Json
+  lastUpdated  DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model CodeSubmission {
+  id              String   @id @default(uuid())
+  userId          String
+  lessonId        String
+  code            String // Code Submissin
+  executionResult String // Output / error 
+  submittedAt     DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id])
+  lesson          Lesson   @relation(fields: [lessonId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Resource {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  resourceType ResourceType
+  resourceUrl  String
+}
+
+enum ResourceType {
+  CHEAT_SHEET
+  ARTICLE
+  VIDEO
+}
+
+model ForumPost {
+  id        String       @id @default(uuid())
+  userId    String
+  title     String
+  content   String
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id])
+  replies   ForumReply[]
+}
+
+model ForumReply {
+  id        String    @id @default(uuid())
+  postId    String
+  userId    String
+  replyText String
+  createdAt DateTime  @default(now())
+  post      ForumPost @relation(fields: [postId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+}
